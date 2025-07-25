@@ -1,0 +1,39 @@
+{Problema de los Filosofos}
+
+program Filosofos;
+
+const
+	N = 5;
+var 
+
+
+process type Filosofo(id : integer);
+var 
+
+begin
+	repeat
+		(* PENSANDO *)
+		
+		{***PROTOCOLO ENTRADA****}
+
+		{************************}
+
+		{SECCIÓN CRITICA}   (* COMIENDO *)
+
+		{*****PROTOCOLO DE SALIDA*************}
+
+		{*************************************}
+	forever
+end; 
+
+var
+	Filo: array[1..N] of Filosofo;
+	i : integer;
+
+begin
+	cobegin
+		for i := 1 to N do Filo[i](i);
+	coend
+end.
+
+

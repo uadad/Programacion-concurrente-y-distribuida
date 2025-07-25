@@ -1,0 +1,42 @@
+(* semaphore solution to producer-consumer problem *)
+program prodcon;
+
+const
+  buffmax = 4;
+var 
+  buffer: array[0..buffmax] of char;
+  nextin, nextout: integer;
+
+process producer;
+var 
+  data: char;
+begin
+  for data := 'a' to 'z' do
+    begin
+	 buffer[nextin] := data;
+	 nextin := (nextin + 1) mod (buffmax + 1);
+    end
+end;  (* producer *)
+ 
+process consumer;
+var 
+  data: char;
+begin
+  repeat
+    begin
+    data := buffer[nextout];
+    nextout := (nextout + 1) mod (buffmax + 1);
+    write(data,' ');
+    end
+  until data = 'z';
+  writeln
+end;  (* consumer *)
+
+begin
+  nextin := 0;
+  nextout := 0;
+  cobegin
+    producer;
+    consumer
+  coend
+end.

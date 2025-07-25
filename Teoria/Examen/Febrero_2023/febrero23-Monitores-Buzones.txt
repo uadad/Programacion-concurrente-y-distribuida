@@ -1,0 +1,318 @@
+ program Febrero23;
+ const
+nH=20; nM=20;
+
+Monitor m;
+
+export entraPasillo,salePasillo,entraHombre,entraMujer,saleHombre,saleMujer;
+
+var:
+   probadorHombre,Pasillolibre:of boolean;
+   probadoresMujeres,esperaHombre: of integer;
+   colaPasillo,colaHombre,colaMujer:of Condition;
+
+  entraPasillo()
+  {
+   while(!Pasillolibre) colaPasillo.await();
+   Pasillolibre=false;
+  }
+  salePasillo(){
+  Pasillolibre:=true;
+  colaPasillo.signal();
+  }
+  
+  entraHombre()
+  {
+  esperaHombre++;
+  while(!probadoresHombre) colaHombre.await();
+  esperaHombre--;
+  
+  probadoresHombre:=false;
+  }
+  
+  entraMujer()
+  {
+    while(probadoresMujeres=0 && (!probadoresHombre || esperaHombre>0)) colaMujer.await();
+	if(probadoresMujeres>0)
+	      probadoresMujeres--; return 'M';
+    else
+	  probadoresHombre:=false; return 'H';
+  }
+  
+  saleHombre()
+  {
+    probadoresHombre:=true;
+	if(esperaHombre>0) colaHombre.signal();
+	else colaMujer.signal();
+  }
+  
+  saleMujer(cual:char)
+  {
+    if(cual=='H') saleHombre();
+	else{
+	      probadoresMujeres++;
+	      colaMujer.signal();
+	}
+  }
+  
+begin
+  probadoresHombre:=true;
+  probadoresMujeres:=2;
+  Pasillolibre:=true;
+  esperaHombre:=0;
+end
+
+ process type THombre(id:integer);
+ begin 
+   
+    m.entraHombre();
+	
+	m.entraPasillo();
+	sleep(1000);
+	m.salePasillo();
+	
+	sleep(5000);
+	
+	m.entraPasillo();
+	sleep(1000);
+	m.salePasillo();
+	
+	m.saleHombre();
+ end; 
+ process type Tmujer(id:integer);
+ begin 
+   
+   cual=m.entraMujer();
+	
+	m.entraPasillo();
+	sleep(1000);
+	m.salePasillo();
+	
+	sleep(5000);
+	
+	m.entraPasillo();
+	sleep(1000);
+	m.salePasillo();
+	
+	m.saleMujer(cual);
+ 
+ end; 
+ var
+i,j: integer; 
+Hombre: array[1..nH] of THombre; 
+Mujer: array[1..nM] of TMujer;
+ begin
+cobegin 
+for i := 1 to nH do Hombre[i](i); 
+for j := 1 to nM do Mujer[i](i); 
+coend 
+ end. 
+ 
+ /***********************************************************BUZONES*****************************************************/
+ 
+ program Febrero23;
+ const
+ nH=20; nM=20;
+ entraPasillo,salePasillo,entraHombre,entraMujer,saleHombre,saleMujer: mailbox of integer;
+ permisoHombre,permisoMujeres:array[1...nH]/[1...nM] of mailbox of integer;
+ permisoPasillo:array[1...nH+nM] of mailbox of integer;
+ 
+ process type Controlador();
+ var: 
+   probadorHombre,Pasillolibre:of boolean;
+   probadoresMujeres,id,cual: of integer;
+ begin 
+   probadoresHombre:=true;
+   probadoresMujeres:=2;
+   Pasillolibre:=true;
+  
+  repeat
+    select
+       when Pasillolibre 
+	   receive(entraPasillo,id);
+	   Pasillolibre:=false;
+	   send(permisoPasillo[id],any);
+    or
+      when probadoresHombre
+	  receive(entrahombre,id);
+	  probadoresHombre:=false;
+	  send(permisoHombre[id],any);
+	or
+      when probadoresMujeres>0 	|| (probadoresHombre && entraHombre.empty())
+	  receive(entraMujer,id);
+	  if(probadoresMujeres>0)
+       {	  
+	   probadoresMujeres--;
+	   send(permisoMujeres[id],1);
+	   }
+	  else{
+	    probadoresHombre:=false;
+		send(permisoMujeres[id],2);
+	   }
+	 or
+	   receive(salePasillo,any);
+	   Pasillolibre:=true;
+	 or
+	   receive(saleHombre,any);
+	   probadoresHombre:=true; 
+	 or
+	   receive(saleMujer,cual);
+	   if(cual==2) probadoresMujeres++;
+	   else probadoresHombre:=true;
+	   
+    endSelect;
+  forever;
+ end; 
+ 
+ process type THombre(id:integer);
+ begin 
+      
+	  send(entraHombre,id);
+	  receive(permisoHombre[id],any);
+	  send(entraPasillo,id+20);
+	  receive(permisoPasillo[id+20],any);
+	  sleep(1000);
+	  send(salePasillo,any);
+	  sleep(5000);
+	  send(entraPasillo,id+20);
+	  receive(permisoPasillo[id+20],any);
+	  sleep(1000);
+	  send(salePasillo,any);
+	  send(saleHombre,any);
+ end;
+ 
+ process type Tmujer(id:integer)
+ var: cual:integer;
+ begin 
+ 
+      send(entraMujer,id);
+	  receive(permisoMujer[id],cual);
+	  send(entraPasillo,id);
+	  receive(permisoPasillo[id],any);
+	  sleep(1000);
+	  send(salePasillo,any);
+	  sleep(5000);
+	  send(entraPasillo,id);
+	  receive(permisoPasillo[id],any);
+	  sleep(1000);
+	  send(salePasillo,any);
+	  send(saleMujer,cual);
+	  
+ end; 
+ 
+ var
+ i,j: integer; 
+ Hombre: array[1..nH] of THombre; 
+ Mujer: array[1..nM] of TMujer;
+ begin
+ cobegin 
+ for i := 1 to nH do Hombre[i](i); 
+ for j := 1 to nM do Mujer[i](i); 
+ coend 
+ end. 
+ 
+ 
+ /*********************************************CANALES**************************************************/
+ 
+ program Febrero23;
+ const
+ nH=20; nM=20;
+ 
+ entraPasillo,salePasillo,entraHombre,entraMujer,saleHombre,saleMujer,esperaHombre,cual: array[1...nH/nM/nH+nM] of channel of synchronous;
+ 
+ process type Controlador();
+ var: 
+   probadorHombre,Pasillolibre:of boolean;
+   probadoresMujeres,id,espera: of integer;
+ begin 
+   probadoresHombre:=true;
+   probadoresMujeres:=2;
+   Pasillolibre:=true;
+    espera:=0;
+  repeat
+    PriSelect
+	    for i:=1 to nH replicate
+		 esperaHombre[i] ? any
+		 espera++;                      //esperando hombres
+	or
+	   for i:=1 to nH+nM replicate
+	    when Pasillolibre
+		 entraPasillo[i] ? any;
+		 Pasillolibre:=false;
+	or
+	  for i:=1 to nH replicate
+	     when probadoresHombre
+		  espera--;                  //espando hombres
+		  entraHombre[i] ? any
+		  probadoresHombre;=false;
+    or
+	  for i:=1 to nM replicate
+	    when probadoresMujeres>0 || (probadoresHombre && espera=0)
+	    entraMujer[i] ? any;
+		if(probadoresMujeres>0){
+		   probadoresMujeres--;
+		   cual ! 1;
+        }else{
+		     probadoresHombre:=false;
+		     cual[i] ! 2;
+        }
+
+     or 
+        for i:=1 to nH+nM replicate
+           salePasillo[i] ? any;
+           Pasillolibre:=true;		
+     or
+	    for i:=1 to nH replicate
+		    saleHombre[i] ? any;
+			probadoresHombre:=true;
+	 or
+	    for i:=1 to nM replicate
+		     saleMujer[i] ? c;
+			 if(c==1)
+			       probadoresMujeres++;
+			 else 
+			       probadoresHombre:=true;
+    endSelect;
+  forever;
+ end; 
+ process type THombre(id:integer);
+ 
+ begin 
+     esperaHombre ! any;
+     entraHombre ! any;
+	 entraPasillo ! any;
+	 sleep(1000);
+	 salePasillo ! any;
+	 sleep(5000);
+	 entraPasillo ! any;
+	 sleep(1000);
+	 salePasillo ! any;
+	 saleHombre ! any7;
+ 
+ end; 
+ process type Tmujer(id:integer);
+ var:
+    c: integer;
+ begin 
+ 
+     entraMujer ! any;
+	 cual ? c;
+	 entraPasillo ! any;
+	 sleep(1000);
+	 salePasillo ! any;
+	 sleep(5000);
+	 entraPasillo ! any;
+	 sleep(1000);
+	 salePasillo ! any;
+	 saleMujer ! c;
+ end; 
+ var
+ i,j: integer; 
+ Hombre: array[1..nH] of THombre; 
+ Mujer: array[1..nM] of TMujer;
+ begin
+ cobegin 
+ for i := 1 to nH do Hombre[i](i); 
+ for j := 1 to nM do Mujer[i](i); 
+ coend 
+ end. 

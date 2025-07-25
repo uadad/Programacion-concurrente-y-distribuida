@@ -1,0 +1,63 @@
+{Problema de los Lectores/Escritores}
+
+program LectEscr;
+
+const
+	NLEC = 5;
+	NESC = 2;
+var 
+
+process type Lectores(id:integer);
+var 
+
+begin
+	repeat
+
+
+		(*****Protocolo de entrada******)
+
+		(*******************************)
+		
+		{SECCIÓN CRÍTICA}
+		
+		(*****Protocolo de salida********)
+
+		(********************************)
+
+	forever
+end; 
+
+process type Escritores(id:integer);
+var 
+
+begin
+	for veces := 1 to 5 do begin
+		sleep(random(3));
+
+		(****Protocolo de entrada*******)
+
+		(*******************************)
+
+		{SECCIÓN CRÍTICA}
+
+		(*****Protocolo de salida*******)
+
+		(*******************************)
+	end
+end;
+
+
+var
+	Escritor: array[1..NESC] of Escritores;
+	Lector: array[1..NLEC] of Lectores;
+	i:integer;
+
+begin
+
+	cobegin
+		for i := 1 to NLEC do Lector[i](i);
+		for i := 1 to NESC do Escritor[i](i)		
+   	coend
+end.
+
+

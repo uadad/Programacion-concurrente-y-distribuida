@@ -1,0 +1,40 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package proyecto1;
+
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ *
+ * @author pedro
+ */
+public class Coche extends Thread{
+    
+    Tunel t;
+    public Coche(Tunel tl){
+        t=tl;
+    }
+    
+    @Override
+    public void run(){
+        Random rnd = new Random();
+        rnd.setSeed(System.currentTimeMillis());
+        try {
+            
+            System.out.println("Soy el coche "+getName());
+            char donde=t.entraCoche();
+            System.out.println("                 ----> coche "+getName()+" ATENDIDO en "+donde);
+            Thread.sleep((rnd.nextInt(3)+1)*2000);
+            System.out.println("                 <---- FIN coche "+getName());
+            t.salecoche(donde);
+            
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Coche.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+}
